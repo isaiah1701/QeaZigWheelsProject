@@ -12,39 +12,53 @@
    build-and-test:
      name: Build and Test
      runs-on: ubuntu-latest
-
+     
      steps:
        # Step 1: Checkout the code
        - name: Checkout code
          uses: actions/checkout@v3
 
-       # Step 2: Set up .NET
+       # Step 2: Setup Chrome for Selenium
+       - name: Setup Chrome
+         uses: browser-actions/setup-chrome@latest
+
+       # Step 3: Set up .NET
        - name: Set up .NET
          uses: actions/setup-dotnet@v3
          with:
            dotnet-version: 8.0.x
 
-       # Step 3: Restore dependencies
+       # Step 4: Restore dependencies
        - name: Restore dependencies
          run: dotnet restore
+         
+       # Step 5: Install matching ChromeDriver
+       - name: Install ChromeDriver matching Chrome version
+         run: |
+           CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d '.' -f 1)
+           echo "Chrome version: $CHROME_VERSION"
+           dotnet add package Selenium.WebDriver.ChromeDriver -v $CHROME_VERSION.*
 
-       # Step 4: Build the project
+       # Step 6: Build the project
        - name: Build the project
-         run: dotnet build --no-restore --configuration Release
+         run: dotnet build --configuration Release
 
-       # Step 5: Run tests
+       # Step 7: Run tests with headless Chrome
        - name: Run tests
-         run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+         run: dotnet test --configuration Release
+         env:
+           HEADLESS: 'true'  # Environment variable for running Chrome in headless mode
 
-       # Step 6: Upload test results (optional)
+       # Step 8: Upload test results
        - name: Upload test results
          if: always()
-         uses: actions/upload-artifact@v4  # Updated to v4
+         uses: actions/upload-artifact@v4
          with:
            name: test-results
            path: "**/TestResults/*.trx"
-           retention-days: 5  # Added retention period
+           retention-days: 5
 
+   # Deploy job remains the same
    deploy:
      name: Deploy
      runs-on: ubuntu-latest

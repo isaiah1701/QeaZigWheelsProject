@@ -4,21 +4,30 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <IsTestProject>true</IsTestProject>
+        <PublishChromeDriver>true</PublishChromeDriver>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <WarningsAsErrors></WarningsAsErrors>
     </PropertyGroup>
 
     <ItemGroup>
-        <!-- Core test framework -->
+        <!-- Core test framework - NUnit only -->
         <PackageReference Include="DotNetEnv" Version="3.1.1" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
-        <PackageReference Include="NUnit" Version="3.13.2" />
-        <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
-
-        <!-- Reqnroll packages (ALL updated to 2.4.0) -->
+        <PackageReference Include="NUnit" Version="3.14.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+        <PackageReference Include="NUnit.Analyzers" Version="3.10.0" />
+        
+        <!-- Reqnroll packages with NUnit integration -->
         <PackageReference Include="Reqnroll" Version="2.4.0" />
         <PackageReference Include="Reqnroll.NUnit" Version="2.4.0" />
         <PackageReference Include="Reqnroll.Tools.MsBuild.Generation" Version="2.4.0" />
-
-        <!-- Your existing extras -->
+        
+        <!-- Remove any MSTest references -->
         <PackageReference Include="ClosedXML" Version="0.104.2" />
         <PackageReference Include="Deque.AxeCore.Commons" Version="4.10.1" />
         <PackageReference Include="DotNetSeleniumExtras.WaitHelpers" Version="3.11.0" />
@@ -26,12 +35,25 @@
         <PackageReference Include="Selenium.Axe" Version="4.0.21" />
         <PackageReference Include="Selenium.Support" Version="4.30.0" />
         <PackageReference Include="Selenium.WebDriver" Version="4.30.0" />
-        <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="134.0.6998.16500" />
+        
+        <!-- Latest stable ChromeDriver that's compatible with the commonly used Chrome versions -->
+        <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="127.0.6387.9200" />
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Add hidden folder references but don't create folders -->
         <Folder Include="Hooks\" />
         <Folder Include="Reports\" />
+        <Folder Include="TestResults\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update=".env">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="test.runsettings">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
@@ -42,4 +64,9 @@
             <_Parameter1>12</_Parameter1>
         </AssemblyAttribute>
     </ItemGroup>
+
+    <!-- Remove any generated MSTest hooks file since we're using NUnit -->
+    <Target Name="RemoveMSTestHooks" BeforeTargets="Build">
+        <Delete Files="$(IntermediateOutputPath)MSTest.AssemblyHooks.cs" />
+    </Target>
 </Project>

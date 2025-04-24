@@ -22,14 +22,23 @@ namespace BikeProject.Hooks
             // Load environment variables BEFORE creating HomePage
             Env.Load();
 
+            // Create ChromeDriver options
             var options = new ChromeOptions();
 
+            // Add common arguments for CI/CD and local environments
             options.AddArgument("--disable-gpu");
             options.AddArgument("--no-sandbox");
             options.AddArgument("--disable-notifications");
             options.AddArgument("--window-size=1920,1080");
 
-            // New instance per scenario ensures thread safety
+            // Add headless mode if running in CI/CD
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HEADLESS")) && Environment.GetEnvironmentVariable("HEADLESS") == "true")
+            {
+                options.AddArgument("--headless=new");
+                Console.WriteLine("BeforeScenario: Running Chrome in headless mode.");
+            }
+
+            // Initialize WebDriver
             IWebDriver driver = new ChromeDriver(options);
             driver.Manage().Window.Maximize();
 
@@ -56,8 +65,15 @@ namespace BikeProject.Hooks
             // Retrieve from context to ensure it's the correct driver instance
             if (_scenarioContext.TryGetValue("WebDriver", out var driverObj) && driverObj is IWebDriver driver)
             {
-                driver.Quit();
-                Console.WriteLine("AfterScenario: WebDriver quit.");
+                try
+                {
+                    driver.Quit();
+                    Console.WriteLine("AfterScenario: WebDriver quit.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"AfterScenario: Failed to quit WebDriver. Error: {ex.Message}");
+                }
             }
         }
     }
