@@ -1,0 +1,18 @@
+# Ignore Visual Studio user-specific files
+.vs/
+*.user
+*.suo
+
+# Build results
+bin/
+obj/
+
+# Other
+*.vsidx
+*.dbmdl
+*.log
+*.tlog
+*.cache
+
+# Environment files
+.env
