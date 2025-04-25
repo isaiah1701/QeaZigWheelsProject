@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
 	<RunConfiguration>
-		<MaxCpuCount>0</MaxCpuCount>
+		<MaxCpuCount>1</MaxCpuCount>
 		<!-- Set to 0 to use all available cores -->
 		<TargetPlatform>x64</TargetPlatform>
 	</RunConfiguration>
