@@ -260,85 +260,87 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
 
         public void AttemptGoogleLogin(string emailOrPhoneInput)
         {
-            try
-            {
-                // Locate and click the login title element
-                IWebElement forumLoginTitle = driver.FindElement(By.XPath("//*[@id='forum_login_title_lg']"));
-                WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-                wait.Until(ExpectedConditions.ElementToBeClickable(forumLoginTitle));
-                forumLoginTitle.Click();
-                Console.WriteLine("Login title element clicked successfully.");
-            }
-            catch (NoSuchElementException)
-            {
-                Console.WriteLine("Element with XPath //*[@id='forum_login_title_lg'] not found.");
-                return; // Exit the method if the element is not found
-            }
-            catch (ElementNotInteractableException)
-            {
-                Console.WriteLine("Element with XPath //*[@id='forum_login_title_lg'] is not interactable.");
-                return; // Exit the method if the element is not interactable
-            }
+            int retries = 3; // Number of retries for each step
+            TimeSpan timeout = TimeSpan.FromSeconds(30); // Increased timeout duration
 
             try
             {
-                // Wait for the login modal to load
-                Thread.Sleep(2000);
-                IWebElement googleSignInButton = driver.FindElement(By.CssSelector("div[data-track-label='Popup_Login/Register_with_Google']"));
-                WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-                wait.Until(ExpectedConditions.ElementToBeClickable(googleSignInButton));
-                googleSignInButton.Click();
-                Console.WriteLine("Google Sign-In button clicked successfully.");
-            }
-            catch (NoSuchElementException)
-            {
-                Console.WriteLine("Google Sign-In button not found.");
-                return; // Exit the method if the element is not found
-            }
-            catch (ElementNotInteractableException)
-            {
-                Console.WriteLine("Google Sign-In button is not interactable.");
-                return; // Exit the method if the element is not interactable
-            }
-
-            try
-            {
-                // Wait for the Google Sign-In modal to load
-                Thread.Sleep(2000);
-
-                // Switch to the Google Sign-In window
-                string mainWindow = driver.CurrentWindowHandle;
-                foreach (string handle in driver.WindowHandles)
+              // Retry loop for clicking the login title element
+                for (int attempt = 0; attempt < retries; attempt++)
                 {
-                    if (handle != mainWindow)
+                    try
                     {
-                        driver.SwitchTo().Window(handle);
+                        IWebElement forumLoginTitle = new WebDriverWait(driver, timeout)
+                            .Until(ExpectedConditions.ElementToBeClickable(By.XPath("//*[@id='forum_login_title_lg']")));
+                        forumLoginTitle.Click();
+                        Console.WriteLine("Login title element clicked successfully.");
                         break;
+                    }
+                    catch (WebDriverTimeoutException)
+                    {
+                        if (attempt == retries - 1) throw;
+                        Console.WriteLine("Retrying login title element click...");
                     }
                 }
 
-                WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+                // Retry loop for clicking the Google Sign-In button
+                for (int attempt = 0; attempt < retries; attempt++)
+                {
+                    try
+                    {
+                        IWebElement googleSignInButton = new WebDriverWait(driver, timeout)
+                            .Until(ExpectedConditions.ElementToBeClickable(By.CssSelector("div[data-track-label='Popup_Login/Register_with_Google']")));
+                        googleSignInButton.Click();
+                        Console.WriteLine("Google Sign-In button clicked successfully.");
+                        break;
+                    }
+                    catch (WebDriverTimeoutException)
+                    {
+                        if (attempt == retries - 1) throw;
+                        Console.WriteLine("Retrying Google Sign-In button click...");
+                    }
+                }
 
-                // Wait for the email or phone input to become visible and send input
-                IWebElement emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
-                emailInput.SendKeys(emailOrPhoneInput);
-                Console.WriteLine($"Email or phone input typed: {emailOrPhoneInput}");
+                // Retry loop for handling the Google Sign-In modal
+                for (int attempt = 0; attempt < retries; attempt++)
+                {
+                    try
+                    {
+                        // Switch to the Google Sign-In window
+                        string mainWindow = driver.CurrentWindowHandle;
+                        foreach (string handle in driver.WindowHandles)
+                        {
+                            if (handle != mainWindow)
+                            {
+                                driver.SwitchTo().Window(handle);
+                                Console.WriteLine("Switched to Google Sign-In window.");
+                                break;
+                            }
+                        }
 
-                // Locate and click the "Next" button
-                IWebElement nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
-                nextButton.Click();
-                Console.WriteLine("Next button clicked successfully.");
+                        // Wait for the email or phone input to become visible and send input
+                        IWebElement emailInput = new WebDriverWait(driver, timeout)
+                            .Until(ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
+                        emailInput.SendKeys(emailOrPhoneInput);
+                        Console.WriteLine($"Email or phone input typed: {emailOrPhoneInput}");
+
+                        // Locate and click the "Next" button
+                        IWebElement nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
+                        nextButton.Click();
+                        Console.WriteLine("Next button clicked successfully.");
+                        break;
+                    }
+                    catch (WebDriverTimeoutException)
+                    {
+                        if (attempt == retries - 1) throw;
+                        Console.WriteLine("Retrying Google Sign-In modal interaction...");
+                    }
+                }
             }
-            catch (NoSuchElementException)
+            catch (Exception ex)
             {
-                Console.WriteLine("Email or phone input field or Next button not found.");
-                Console.WriteLine(driver.Url);
-                return;
-            }
-            catch (ElementNotInteractableException)
-            {
-                Console.WriteLine("Email or phone input field or Next button is not interactable.");
-                return;
+                Console.WriteLine($"An error occurred during Google login: {ex.Message}");
+                throw;
             }
         }
         public void navigateToUsedCars()
