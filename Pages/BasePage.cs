@@ -3,6 +3,7 @@ using OpenQA.Selenium.Interactions;
 using OpenQA.Selenium.Support.UI;
 using SeleniumExtras.WaitHelpers;
 using Selenium.Axe;
+using Reqnroll;
 
 
 
@@ -261,49 +262,50 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
         public void AttemptGoogleLogin(string emailOrPhoneInput)
         {
             int retries = 3;
-            TimeSpan timeout = TimeSpan.FromSeconds(30); // You can extend if needed
+            TimeSpan timeout = TimeSpan.FromSeconds(30);
             bool isCI = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
 
             try
             {
                 Console.WriteLine($"Starting Google login process. Current URL: {driver.Url}");
 
+                // If running in GitHub Actions, skip login entirely
                 if (isCI)
                 {
-                    Console.WriteLine("Detected CI/CD environment. Skipping real Google login to avoid failures.");
-                    return; // Skip Google login if running in CI
+                    Console.WriteLine("Detected CI/CD environment. Skipping real Google login and marking test as skipped.");
+                    throw new PendingStepException("Skipping Google login in CI environment.");
                 }
 
-                // Step 1: Click forum login title
+                // Step 1: Click the forum login title
                 for (int attempt = 0; attempt < retries; attempt++)
                 {
                     try
                     {
-                        IWebElement forumLoginTitle = new WebDriverWait(driver, timeout)
+                        var forumLoginTitle = new WebDriverWait(driver, timeout)
                             .Until(ExpectedConditions.ElementToBeClickable(By.XPath("//*[@id='forum_login_title_lg']")));
                         forumLoginTitle.Click();
-                        Console.WriteLine("Login title element clicked successfully.");
+                        Console.WriteLine("Login title element clicked.");
                         break;
                     }
                     catch (Exception ex)
                     {
                         if (attempt == retries - 1)
                         {
-                            Console.WriteLine($"Failed to click login title after {retries} attempts. Skipping login.");
-                            return;
+                            Console.WriteLine($"Login title click failed after {retries} attempts. Skipping Google login.");
+                            throw new PendingStepException("Login title click failed. Skipping Google login.");
                         }
                         Console.WriteLine($"Retrying login title click (Attempt {attempt + 1}/{retries})...");
                         Thread.Sleep(1000);
                     }
                 }
 
-                // Step 2: Click Google Sign-In button
-                Thread.Sleep(2000); // Allow modal to appear
+                // Step 2: Click the Google Sign-In button
+                Thread.Sleep(2000); // Give modal time
                 for (int attempt = 0; attempt < retries; attempt++)
                 {
                     try
                     {
-                        IWebElement googleSignInButton = new WebDriverWait(driver, timeout)
+                        var googleSignInButton = new WebDriverWait(driver, timeout)
                             .Until(ExpectedConditions.ElementToBeClickable(By.CssSelector("div[data-track-label='Popup_Login/Register_with_Google']")));
                         ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", googleSignInButton);
                         Console.WriteLine("Google Sign-In button clicked via JavaScript.");
@@ -313,60 +315,61 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
                     {
                         if (attempt == retries - 1)
                         {
-                            Console.WriteLine($"Failed to click Google Sign-In button after {retries} attempts. Skipping login.");
-                            return;
+                            Console.WriteLine($"Google Sign-In button click failed after {retries} attempts. Skipping Google login.");
+                            throw new PendingStepException("Google Sign-In button click failed. Skipping Google login.");
                         }
                         Console.WriteLine($"Retrying Google Sign-In click (Attempt {attempt + 1}/{retries})...");
                         Thread.Sleep(1000);
                     }
                 }
 
-                // Step 3: Try to switch to new Google window
+                // Step 3: Switch to Google login window
                 Thread.Sleep(2000); // Give time for popup
                 string mainWindow = driver.CurrentWindowHandle;
-                try
+                var handles = driver.WindowHandles;
+                if (handles.Count <= 1)
                 {
-                    WebDriverWait windowWait = new WebDriverWait(driver, timeout);
-                    windowWait.Until(d => d.WindowHandles.Count > 1);
+                    Console.WriteLine("No new window detected after clicking Google Sign-In. Skipping Google login.");
+                    throw new PendingStepException("No Google login popup opened. Skipping Google login.");
+                }
 
-                    foreach (var handle in driver.WindowHandles)
+                foreach (var handle in handles)
+                {
+                    if (handle != mainWindow)
                     {
-                        if (handle != mainWindow)
-                        {
-                            driver.SwitchTo().Window(handle);
-                            Console.WriteLine($"Switched to new window. Current URL: {driver.Url}");
-                            break;
-                        }
+                        driver.SwitchTo().Window(handle);
+                        Console.WriteLine($"Switched to new window. Current URL: {driver.Url}");
+                        break;
                     }
                 }
-                catch (Exception)
-                {
-                    Console.WriteLine("No new window detected. Skipping Google login.");
-                    return;
-                }
 
-                // Step 4: Try to input email
+                // Step 4: Enter email and click next
                 try
                 {
-                    IWebElement emailInput = new WebDriverWait(driver, timeout)
+                    var emailInput = new WebDriverWait(driver, timeout)
                         .Until(ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
                     emailInput.Clear();
                     emailInput.SendKeys(emailOrPhoneInput);
-                    Console.WriteLine("Entered email/phone successfully.");
+                    Console.WriteLine("Entered email.");
 
-                    IWebElement nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
+                    var nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
                     nextButton.Click();
-                    Console.WriteLine("Clicked Next button successfully.");
+                    Console.WriteLine("Clicked Next button.");
                 }
                 catch (Exception)
                 {
-                    Console.WriteLine("Google login fields not found. Skipping login.");
-                    return;
+                    Console.WriteLine("Failed to find Google login fields. Skipping Google login.");
+                    throw new PendingStepException("Google login fields not found. Skipping Google login.");
                 }
+            }
+            catch (PendingStepException)
+            {
+                throw; // rethrow cleanly for SpecFlow to recognize "skipped"
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Unhandled error during Google login: {ex.Message}. Skipping login.");
+                Console.WriteLine($"Unexpected error during Google login: {ex.Message}. Skipping login.");
+                throw new PendingStepException("Unexpected error during Google login. Skipping login.");
             }
         }
         
