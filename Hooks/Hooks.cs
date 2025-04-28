@@ -2,7 +2,8 @@ using Reqnroll;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using BikeProject.Pages;
-using DotNetEnv; // For environment variable loading
+using DotNetEnv;
+using OpenQA.Selenium.DevTools; // For environment variable loading
 
 namespace BikeProject.Hooks
 {
@@ -42,6 +43,9 @@ namespace BikeProject.Hooks
                 options.AddArgument("--window-size=1920,1080");
                 options.AddArgument("--start-maximized");
                 options.AddArgument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                options.AddUserProfilePreference("profile.default_content_settings_values.popups",1);
+                options.AddArgument("--disable-popup-blocking");
+                
                 Console.WriteLine("BeforeScenario: Running Chrome in headless mode.");
             }
 
