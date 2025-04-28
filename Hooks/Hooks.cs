@@ -31,6 +31,8 @@ namespace BikeProject.Hooks
             options.AddArgument("--no-sandbox");
             options.AddArgument("--disable-notifications");
             options.AddArgument("--window-size=1920,1080");
+            options.AddUserProfilePreference("profile.default_content_settings_values.popups", 1);
+            options.AddArgument("--disable-popup-blocking");
 
             // Add headless mode if running in CI/CD
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HEADLESS")) && Environment.GetEnvironmentVariable("HEADLESS") == "true")
