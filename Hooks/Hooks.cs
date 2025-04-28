@@ -49,6 +49,10 @@ namespace BikeProject.Hooks
             IWebDriver driver = new ChromeDriver(options);
             driver.Manage().Window.Maximize();
 
+            bool isCI = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
+            int timeoutSeconds = isCI ? 60 : 30; // Set timeout based on environment    
+
+
             // Inject WebDriver into ScenarioContext
             _scenarioContext["WebDriver"] = driver;
 
