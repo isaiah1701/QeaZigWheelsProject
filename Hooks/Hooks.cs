@@ -34,7 +34,7 @@ namespace BikeProject.Hooks
             // Add headless mode if running in CI/CD
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HEADLESS")) && Environment.GetEnvironmentVariable("HEADLESS") == "true")
             {
-                options.AddArgument("--headless");
+                options.AddArgument("--headless=new");
                 options.AddArgument("--disable-dev-shm-usage");
                 options.AddArgument("--disable-extensions");
                 options.AddArgument("--disable-gpu");
