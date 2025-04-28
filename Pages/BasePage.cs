@@ -265,7 +265,9 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
 
             try
             {
-              // Retry loop for clicking the login title element
+                Console.WriteLine($"Starting Google login process. Current URL: {driver.Url}");
+
+                // Step 1: Click login title element with retries
                 for (int attempt = 0; attempt < retries; attempt++)
                 {
                     try
@@ -276,14 +278,20 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
                         Console.WriteLine("Login title element clicked successfully.");
                         break;
                     }
-                    catch (WebDriverTimeoutException)
+                    catch (Exception ex)
                     {
-                        if (attempt == retries - 1) throw;
-                        Console.WriteLine("Retrying login title element click...");
+                        if (attempt == retries - 1)
+                        {
+                            Console.WriteLine($"Failed to click login title after {retries} attempts. URL: {driver.Url}, Error: {ex.Message}");
+                            throw;
+                        }
+                        Console.WriteLine($"Retrying login title element click... (Attempt {attempt + 1}/{retries})");
+                        Thread.Sleep(1000); // Short wait between retries
                     }
                 }
 
-                // Retry loop for clicking the Google Sign-In button
+                // Step 2: Wait for modal and click Google Sign-In button with retries
+                Thread.Sleep(2000); // Allow time for modal to appear
                 for (int attempt = 0; attempt < retries; attempt++)
                 {
                     try
@@ -294,52 +302,91 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
                         Console.WriteLine("Google Sign-In button clicked successfully.");
                         break;
                     }
-                    catch (WebDriverTimeoutException)
+                    catch (Exception ex)
                     {
-                        if (attempt == retries - 1) throw;
-                        Console.WriteLine("Retrying Google Sign-In button click...");
+                        if (attempt == retries - 1)
+                        {
+                            Console.WriteLine($"Failed to click Google Sign-In button after {retries} attempts. URL: {driver.Url}, Error: {ex.Message}");
+                            throw;
+                        }
+                        Console.WriteLine($"Retrying Google Sign-In button click... (Attempt {attempt + 1}/{retries})");
+                        Thread.Sleep(1000);
                     }
                 }
 
-                // Retry loop for handling the Google Sign-In modal
+                // Step 3: Switch to Google window and handle login with retries
+                Thread.Sleep(2000); // Allow time for new window
                 for (int attempt = 0; attempt < retries; attempt++)
                 {
                     try
                     {
+                        // Log number of window handles before switch
+                        Console.WriteLine($"Window handles available: {driver.WindowHandles.Count}");
+
                         // Switch to the Google Sign-In window
                         string mainWindow = driver.CurrentWindowHandle;
+                        bool switched = false;
+
                         foreach (string handle in driver.WindowHandles)
                         {
                             if (handle != mainWindow)
                             {
                                 driver.SwitchTo().Window(handle);
-                                Console.WriteLine("Switched to Google Sign-In window.");
+                                Console.WriteLine($"Switched to window. New URL: {driver.Url}");
+                                switched = true;
                                 break;
                             }
                         }
 
-                        // Wait for the email or phone input to become visible and send input
+                        if (!switched)
+                        {
+                            Console.WriteLine("No new window found to switch to.");
+                            if (attempt == retries - 1) throw new Exception("No Google login window found.");
+                            continue;
+                        }
+
+                        // Wait for email input field
                         IWebElement emailInput = new WebDriverWait(driver, timeout)
                             .Until(ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
+                        emailInput.Clear();
                         emailInput.SendKeys(emailOrPhoneInput);
                         Console.WriteLine($"Email or phone input typed: {emailOrPhoneInput}");
 
-                        // Locate and click the "Next" button
+                        // Click Next button
                         IWebElement nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
                         nextButton.Click();
                         Console.WriteLine("Next button clicked successfully.");
                         break;
                     }
-                    catch (WebDriverTimeoutException)
+                    catch (Exception ex)
                     {
-                        if (attempt == retries - 1) throw;
-                        Console.WriteLine("Retrying Google Sign-In modal interaction...");
+                        if (attempt == retries - 1)
+                        {
+                            Console.WriteLine($"Failed to complete Google login after {retries} attempts. Current URL: {driver.Url}, Error: {ex.Message}");
+
+                            // Additional context on failure
+                            try
+                            {
+                                Console.WriteLine($"Page title: {driver.Title}");
+                                Console.WriteLine($"Page source length: {driver.PageSource?.Length ?? 0} characters");
+
+                                // Log some important elements that might be present
+                                try { Console.WriteLine($"Email field exists: {driver.FindElements(By.Id("identifierId")).Count > 0}"); } catch { }
+                                try { Console.WriteLine($"Next button exists: {driver.FindElements(By.XPath("//*[@id=\"identifierNext\"]/div/button/span")).Count > 0}"); } catch { }
+                            }
+                            catch { }
+
+                            throw;
+                        }
+                        Console.WriteLine($"Retrying Google login flow... (Attempt {attempt + 1}/{retries})");
+                        Thread.Sleep(1000);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred during Google login: {ex.Message}");
+                Console.WriteLine($"ERROR during Google login process: {ex.Message}");
+                Console.WriteLine($"Current URL at failure: {driver.Url}");
                 throw;
             }
         }
