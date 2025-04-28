@@ -133,19 +133,23 @@ namespace BikeProject.StepDefinitions
             }
         }
 
-        [When(@"I navigate to the city ""(.*)""")]
-        public void WhenINavigateToTheCity(string city)
+        [When(@"I navigate to the city {string} # Ensure this is a valid Base{int} string")]
+        public void WhenINavigateToTheCity(string encodedCityName, int baseType)
         {
             try
             {
-                usedCarsPage = (UsedCarsPage)_scenarioContext["usedCarsPage"];
-                usedCarsPage.NavigateToCity(city);
+                // Decode the Base-64 encoded city name
+                string cityName = Base64Decode(encodedCityName);
 
-                extentHelper.LogPass(test, $"Successfully navigated to city: {city}");
+                // Call the method to navigate to the city
+                var usedCarsPage = new UsedCarsPage(driver);
+                usedCarsPage.NavigateToCity(cityName);
+
+                Console.WriteLine($"Successfully navigated to the city: {cityName}");
             }
-            catch (Exception ex)
+            catch (FormatException ex)
             {
-                extentHelper.LogFail(test, $"Failed to navigate to city {city}: {ex.Message}");
+                Console.WriteLine($"Invalid Base-{baseType} string: {encodedCityName}. Error: {ex.Message}");
                 throw;
             }
         }
@@ -194,13 +198,11 @@ namespace BikeProject.StepDefinitions
             }
         }
 
-        public static string Base64Decode(string encodedData)
+        // Helper method to decode Base-64 strings
+        private string Base64Decode(string base64EncodedData)
         {
-            if (string.IsNullOrEmpty(encodedData))
-                throw new ArgumentNullException(nameof(encodedData), "Encoded data cannot be null or empty.");
-
-            byte[] data = Convert.FromBase64String(encodedData);
-            return Encoding.UTF8.GetString(data); // Encoding is now recognized
+            var base64EncodedBytes = Convert.FromBase64String(base64EncodedData);
+            return Encoding.UTF8.GetString(base64EncodedBytes);
         }
     }
 }

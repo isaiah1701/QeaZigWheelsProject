@@ -258,14 +258,16 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
             js.ExecuteScript($"window.scrollBy(0, {offset});");
         }
 
-        public void AttemptGoogleLogin(String emailOrPhoneInput)
+        public void AttemptGoogleLogin(string emailOrPhoneInput)
         {
             try
             {
+                // Locate and click the login title element
                 IWebElement forumLoginTitle = driver.FindElement(By.XPath("//*[@id='forum_login_title_lg']"));
                 WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
                 wait.Until(ExpectedConditions.ElementToBeClickable(forumLoginTitle));
                 forumLoginTitle.Click();
+                Console.WriteLine("Login title element clicked successfully.");
             }
             catch (NoSuchElementException)
             {
@@ -280,11 +282,13 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
 
             try
             {
-                Thread.Sleep(2000); // Wait for the login modal to load
+                // Wait for the login modal to load
+                Thread.Sleep(2000);
                 IWebElement googleSignInButton = driver.FindElement(By.CssSelector("div[data-track-label='Popup_Login/Register_with_Google']"));
                 WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
                 wait.Until(ExpectedConditions.ElementToBeClickable(googleSignInButton));
                 googleSignInButton.Click();
+                Console.WriteLine("Google Sign-In button clicked successfully.");
             }
             catch (NoSuchElementException)
             {
@@ -299,7 +303,8 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
 
             try
             {
-                Thread.Sleep(2000); // Let the Google Sign-In modal load (if needed)
+                // Wait for the Google Sign-In modal to load
+                Thread.Sleep(2000);
 
                 // Switch to the Google Sign-In window
                 string mainWindow = driver.CurrentWindowHandle;
@@ -315,13 +320,14 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
                 WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
 
                 // Wait for the email or phone input to become visible and send input
-                IWebElement emailInput = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
+                IWebElement emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
+                emailInput.SendKeys(emailOrPhoneInput);
+                Console.WriteLine($"Email or phone input typed: {emailOrPhoneInput}");
 
-                var emailorPhone = driver.FindElement(By.Id("identifierId"));
-                emailorPhone.SendKeys(emailOrPhoneInput); // use your actual variable
-
-                var nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
+                // Locate and click the "Next" button
+                IWebElement nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
                 nextButton.Click();
+                Console.WriteLine("Next button clicked successfully.");
             }
             catch (NoSuchElementException)
             {
@@ -334,9 +340,6 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
                 Console.WriteLine("Email or phone input field or Next button is not interactable.");
                 return;
             }
-
-            
-            
         }
         public void navigateToUsedCars()
         {

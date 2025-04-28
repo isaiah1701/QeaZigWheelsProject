@@ -112,7 +112,7 @@ namespace BikeProject.Features
     await testRunner.AndAsync("I dismiss the notification popup", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 8
-    await testRunner.AndAsync("I navigate to the city \"Q2hlbm5haQ==\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("I navigate to the city \"Q2hlbm5haQ==\" # Ensure this is a valid Base-64 string", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 9
     await testRunner.ThenAsync("I should be able to extract popular cars", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");

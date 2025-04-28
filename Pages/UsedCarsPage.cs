@@ -2,10 +2,12 @@
 using OpenQA.Selenium.Support.UI;
 using ClosedXML.Excel;
 
+using System.Text;
+
 namespace BikeProject.Pages
 {
-    
-  
+
+
     public class UsedCarsPage : BasePage
     {
         // Locators for elements on the Used Cars page
@@ -15,7 +17,7 @@ namespace BikeProject.Pages
         bool executed = false;
         public UsedCarsPage(IWebDriver webDriver) : base(webDriver)
         {
-            
+
 
         }
 
@@ -27,8 +29,8 @@ namespace BikeProject.Pages
             Thread.Sleep(100000);
         }
 
-       
-     
+
+
 
 
 
@@ -102,6 +104,9 @@ window.expensiveCarFilter = setInterval(hideExpensiveCars, 300); console.log('Li
             // Step 1: Handle consent popup
             try
             {
+
+
+
                 WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
                 IWebElement consentBtn = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions
                 .ElementToBeClickable(By.CssSelector("button[aria-label='Consent']")));
@@ -241,7 +246,7 @@ window.expensiveCarFilter = setInterval(hideExpensiveCars, 300); console.log('Li
         }
     }
 
-
-
 }
+
+   
 

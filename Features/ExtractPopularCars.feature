@@ -5,5 +5,5 @@
     And I have handled the consent popup
     When I navigate to the used cars page
     And I dismiss the notification popup
-    And I navigate to the city "Q2hlbm5haQ==" 
+    And I navigate to the city "Q2hlbm5haQ==" # Ensure this is a valid Base-64 string
     Then I should be able to extract popular cars
