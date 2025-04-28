@@ -293,47 +293,189 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
                 Retry(() =>
                 {
                     Console.WriteLine($"Waiting for new window... Existing windows: {driver.WindowHandles.Count}");
+
+                    // Wait for new window with longer timeout
                     wait.Until(driver => driver.WindowHandles.Count > originalWindowCount);
 
-                    foreach (var handle in driver.WindowHandles)
+                    // Get all window handles and switch to the new one
+                    var handles = driver.WindowHandles.ToList();
+                    Console.WriteLine($"Window handles found: {handles.Count}");
+
+                    foreach (var handle in handles)
                     {
                         if (handle != mainWindow)
                         {
                             driver.SwitchTo().Window(handle);
-                            Console.WriteLine($"Switched to Google login window. URL: {driver.Url}");
+                            Console.WriteLine($"Switched to window. URL: {driver.Url}, Title: {driver.Title}");
                             break;
                         }
                     }
+
+                    // Wait for the page to load completely
+                    ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete");
+
                 }, retries);
 
-                // Step 4: Handle iframe if needed
-                try
-                {
-                    var iframe = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("iframe")));
-                    driver.SwitchTo().Frame(iframe);
-                    Console.WriteLine("Switched into iframe on Google login page.");
-                }
-                catch (WebDriverTimeoutException)
-                {
-                    Console.WriteLine("No iframe detected. Continuing without iframe switch.");
-                }
-
-                // Step 5: Perform Google login
+                // Step 4: Improved iframe handling
                 Retry(() =>
                 {
-                    var emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
+                    Console.WriteLine($"Looking for iframes on page: {driver.Url}");
+
+                    // Wait for the DOM to be fully loaded
+                    ((IJavaScriptExecutor)driver).ExecuteScript("return document.readyState").Equals("complete");
+
+                    // Check how many iframes are present
+                    var iframes = driver.FindElements(By.TagName("iframe"));
+                    Console.WriteLine($"Found {iframes.Count} iframes on the page");
+
+                    bool frameFound = false;
+
+                    // Try to switch to default content first to ensure we're at the top level
+                    driver.SwitchTo().DefaultContent();
+
+                    // First try for common Google iframe IDs or name attributes
+                    string[] googleFrameIdentifiers = new[] {
+                        "gsi_427162_788768", // Example Google iframe ID
+                        "signin-frame",
+                        "googleIdentityFrame",
+                        "gsi_427162_515810"
+                    };
+
+                    // First attempt: Try direct iframe identifiers
+                    foreach (var id in googleFrameIdentifiers)
+                    {
+                        try
+                        {
+                            Console.WriteLine($"Trying to find iframe with ID/name: {id}");
+                            driver.SwitchTo().Frame(id);
+                            Console.WriteLine($"Successfully switched to iframe: {id}");
+                            frameFound = true;
+                            break;
+                        }
+                        catch (NoSuchFrameException)
+                        {
+                            Console.WriteLine($"No iframe with ID/name: {id} found.");
+                            // Continue to the next ID
+                            driver.SwitchTo().DefaultContent();
+                        }
+                    }
+
+                    // Second attempt: if no specific iframes found, try all iframes on page
+                    if (!frameFound && iframes.Count > 0)
+                    {
+                        for (int i = 0; i < iframes.Count; i++)
+                        {
+                            try
+                            {
+                                driver.SwitchTo().Frame(i);
+                                Console.WriteLine($"Switched to iframe index: {i}");
+
+                                // Check if this iframe has the Gmail login elements
+                                bool hasEmailField = driver.FindElements(By.Id("identifierId")).Count > 0;
+
+                                if (hasEmailField)
+                                {
+                                    Console.WriteLine("Found iframe with email field!");
+                                    frameFound = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("This iframe does not contain the email field.");
+                                    driver.SwitchTo().DefaultContent();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error switching to iframe {i}: {ex.Message}");
+                                driver.SwitchTo().DefaultContent();
+                            }
+                        }
+                    }
+
+                    // If we couldn't find the right iframe, try without iframe switching
+                    if (!frameFound)
+                    {
+                        Console.WriteLine("Could not find appropriate iframe. Attempting login without iframe switching.");
+                        driver.SwitchTo().DefaultContent();
+                    }
+
+                }, retries);
+
+                // Step 5: Try to find the email input element regardless of iframe
+                Retry(() =>
+                {
+                    // Try different strategies to locate the email input
+                    IWebElement emailInput = null;
+
+                    // Strategy 1: Direct ID
+                    try
+                    {
+                        emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.Id("identifierId")));
+                        Console.WriteLine("Found email input by ID.");
+                    }
+                    catch (WebDriverTimeoutException)
+                    {
+                        // Strategy 2: Try by name
+                        try
+                        {
+                            emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.Name("identifier")));
+                            Console.WriteLine("Found email input by name.");
+                        }
+                        catch (WebDriverTimeoutException)
+                        {
+                            // Strategy 3: Try by XPath
+                            try
+                            {
+                                emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//input[@type='email']")));
+                                Console.WriteLine("Found email input by XPath.");
+                            }
+                            catch (WebDriverTimeoutException)
+                            {
+                                // Throw an informative exception
+                                throw new Exception("Could not locate the email input field using multiple strategies");
+                            }
+                        }
+                    }
+
+                    // Once we have the email input, interact with it
                     emailInput.Clear();
                     emailInput.SendKeys(emailOrPhoneInput);
                     Console.WriteLine("Email entered.");
 
-                    var nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
+                    // Strategy for finding the Next button
+                    IWebElement nextButton = null;
+
+                    try
+                    {
+                        nextButton = driver.FindElement(By.XPath("//*[@id=\"identifierNext\"]/div/button/span"));
+                        Console.WriteLine("Found Next button by XPath.");
+                    }
+                    catch (NoSuchElementException)
+                    {
+                        try
+                        {
+                            nextButton = driver.FindElement(By.CssSelector("[id='identifierNext'] button"));
+                            Console.WriteLine("Found Next button by CSS selector.");
+                        }
+                        catch (NoSuchElementException)
+                        {
+                            try
+                            {
+                                nextButton = driver.FindElement(By.XPath("//button[contains(.,'Next')]"));
+                                Console.WriteLine("Found Next button by text content.");
+                            }
+                            catch (NoSuchElementException)
+                            {
+                                throw new Exception("Could not locate the Next button using multiple strategies");
+                            }
+                        }
+                    }
+
                     nextButton.Click();
                     Console.WriteLine("Next button clicked.");
+
                 }, retries);
-
-                // Step 6: (Optional) Switch back to main window after login if needed
-                // driver.SwitchTo().Window(mainWindow);
-
             }
             catch (Exception ex)
             {
@@ -341,6 +483,14 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
                 Console.WriteLine($"Current URL at failure: {driver.Url}");
                 Console.WriteLine($"Page Title: {driver.Title}");
                 Console.WriteLine($"Window Handles: {string.Join(", ", driver.WindowHandles)}");
+
+                // Try to log the page source for debugging
+                try
+                {
+                    Console.WriteLine($"Page source length: {driver.PageSource?.Length ?? 0} characters");
+                }
+                catch { }
+
                 throw;
             }
         }
