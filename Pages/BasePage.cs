@@ -260,7 +260,7 @@ public static T RetryIfStale<T>(Func<T> action, int retries = 2)
         }
 
        
-void AttemptGoogleLogin(string emailOrPhoneInput)
+public void AttemptGoogleLogin(string emailOrPhoneInput)
         {
             int retries = 3;
             TimeSpan timeout = TimeSpan.FromSeconds(30); // Moderate timeout for CI/CD efficiency
