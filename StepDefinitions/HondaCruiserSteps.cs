@@ -38,7 +38,67 @@ public class HondaCruiserSteps
         upcomingBikesUrlTemplate = Base64Decode(encodedUrlTemplate);
 
         _scenarioContext = scenarioContext;
-        driver = (IWebDriver)_scenarioContext["WebDriver"];
+        // Replace the simple assignment with this check-and-create code
+        try
+        {
+            if (_scenarioContext.ContainsKey("WebDriver") && _scenarioContext["WebDriver"] != null)
+            {
+                driver = (IWebDriver)_scenarioContext["WebDriver"];
+                Console.WriteLine("Retrieved existing WebDriver from ScenarioContext");
+            }
+            else
+            {
+                Console.WriteLine("WebDriver not found in ScenarioContext - creating new instance");
+
+                // Create ChromeOptions with common settings for stability
+                var options = new ChromeOptions();
+                options.AddArgument("--disable-gpu");
+                options.AddArgument("--no-sandbox");
+                options.AddArgument("--disable-notifications");
+                options.AddArgument("--window-size=1920,1080");
+                options.AddUserProfilePreference("profile.default_content_settings_values.popups", 1);
+                options.AddArgument("--disable-popup-blocking");
+
+                // Check if running in CI/CD environment
+                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HEADLESS")) &&
+                    Environment.GetEnvironmentVariable("HEADLESS") == "true")
+                {
+                    options.AddArgument("--headless=new");
+                    options.AddArgument("--disable-dev-shm-usage");
+                    options.AddArgument("--disable-extensions");
+                    Console.WriteLine("Creating WebDriver in headless mode");
+                }
+
+                // Create the driver
+                driver = new ChromeDriver(options);
+                driver.Manage().Window.Maximize();
+
+                // Add to scenario context for future use
+                _scenarioContext["WebDriver"] = driver;
+                Console.WriteLine("Created and stored new WebDriver in ScenarioContext");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during WebDriver initialization: {ex.Message}");
+
+            // Final fallback with minimal options if everything else fails
+            try
+            {
+                var basicOptions = new ChromeOptions();
+                basicOptions.AddArgument("--disable-gpu");
+                basicOptions.AddArgument("--no-sandbox");
+
+                driver = new ChromeDriver(basicOptions);
+                _scenarioContext["WebDriver"] = driver;
+                Console.WriteLine("Created basic WebDriver as final fallback");
+            }
+            catch (Exception fallbackEx)
+            {
+                Console.WriteLine($"Critical error: Cannot create WebDriver: {fallbackEx.Message}");
+                throw new InvalidOperationException("Cannot initialize WebDriver using any method", fallbackEx);
+            }
+        }
         homePage = new HomePage(driver);
 
         // Initialize ExtentHelper with custom report name
