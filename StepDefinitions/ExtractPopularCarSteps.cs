@@ -30,17 +30,48 @@ namespace BikeProject.StepDefinitions
         public StepDefinitions(ScenarioContext scenarioContext)
         {
             // Load environment variables
-            Env.Load();
-            string encodedCity = Environment.GetEnvironmentVariable("CITY_NAME");
-            string city = Base64Decode(encodedCity);  // This would decode to "Chennai"
+            try { Env.Load(); } catch (Exception ex) { Console.WriteLine($"Warning: .env file not loaded: {ex.Message}"); }
+
             _scenarioContext = scenarioContext;
-            driver = (IWebDriver)_scenarioContext["WebDriver"];
+
+            // Get encoded city name with fallback
+            string encodedCity = Environment.GetEnvironmentVariable("CITY_NAME");
+            if (string.IsNullOrEmpty(encodedCity))
+            {
+                Console.WriteLine("WARNING: CITY_NAME not found in environment variables. Using default value.");
+                encodedCity = "Q2hlbm5haQ=="; // Base64 for "Chennai"
+            }
+
+            string city = Base64Decode(encodedCity);
+            Console.WriteLine($"Using city: {city}");
+
+            // Initialize driver
+            try
+            {
+                driver = (IWebDriver)_scenarioContext["WebDriver"];
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving WebDriver: {ex.Message}. Test will likely fail.");
+            }
+
+            // Initialize usedCarsPage to avoid CS8618 warning
+            usedCarsPage = null!; // We'll initialize it later when needed
+
             // Check if HomePage exists in ScenarioContext, if not create it
             if (!_scenarioContext.ContainsKey("HomePage") || _scenarioContext["HomePage"] == null)
             {
-                homePage = new HomePage(driver);
-                _scenarioContext["HomePage"] = homePage;
-                Console.WriteLine("Created and stored new HomePage in ScenarioContext");
+                try
+                {
+                    homePage = new HomePage(driver);
+                    _scenarioContext["HomePage"] = homePage;
+                    Console.WriteLine("Created and stored new HomePage in ScenarioContext");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error creating HomePage: {ex.Message}. Using fallback approach.");
+                    // We'll handle this in the individual steps if needed
+                }
             }
             else
             {
@@ -49,26 +80,34 @@ namespace BikeProject.StepDefinitions
             }
 
             // Initialize ExtentHelper with custom report name
-            if (!_scenarioContext.ContainsKey("ExtentHelper"))
+            try
             {
-                extentHelper = new ExtentHelper(driver, "ExtractPopularCarsTest");
-                extentHelper.InitializeReport();
-                _scenarioContext["ExtentHelper"] = extentHelper;
-            }
-            else
-            {
-                extentHelper = (ExtentHelper)_scenarioContext["ExtentHelper"];
-            }
+                if (!_scenarioContext.ContainsKey("ExtentHelper"))
+                {
+                    extentHelper = new ExtentHelper(driver, "ExtractPopularCarsTest");
+                    extentHelper.InitializeReport();
+                    _scenarioContext["ExtentHelper"] = extentHelper;
+                }
+                else
+                {
+                    extentHelper = (ExtentHelper)_scenarioContext["ExtentHelper"];
+                }
 
-            // Create test if not already created
-            if (!_scenarioContext.ContainsKey("ExtentTest"))
-            {
-                test = extentHelper.CreateTest("Extract Popular Cars Test");
-                _scenarioContext["ExtentTest"] = test;
+                // Create test if not already created
+                if (!_scenarioContext.ContainsKey("ExtentTest"))
+                {
+                    test = extentHelper.CreateTest("Extract Popular Cars Test");
+                    _scenarioContext["ExtentTest"] = test;
+                }
+                else
+                {
+                    test = (ExtentTest)_scenarioContext["ExtentTest"];
+                }
             }
-            else
+            catch (Exception ex)
             {
-                test = (ExtentTest)_scenarioContext["ExtentTest"];
+                Console.WriteLine($"ExtentHelper initialization failed: {ex.Message}. Reporting will be limited.");
+                // We can proceed without proper reporting if necessary
             }
         }
 
@@ -209,11 +248,31 @@ namespace BikeProject.StepDefinitions
             }
         }
 
-        // Helper method to decode Base-64 strings
+        // Enhanced Base64 decoding method with fallback
         private string Base64Decode(string base64EncodedData)
         {
-            var base64EncodedBytes = Convert.FromBase64String(base64EncodedData);
-            return Encoding.UTF8.GetString(base64EncodedBytes);
+            // Check for null or empty input
+            if (string.IsNullOrEmpty(base64EncodedData))
+            {
+                Console.WriteLine("WARNING: Encoded data was null or empty. Using default value.");
+                return "Chennai"; // Default fallback value
+            }
+
+            try
+            {
+                var base64EncodedBytes = Convert.FromBase64String(base64EncodedData);
+                return Encoding.UTF8.GetString(base64EncodedBytes);
+            }
+            catch (FormatException ex)
+            {
+                Console.WriteLine($"WARNING: Invalid Base64 string format. Using default value. Error: {ex.Message}");
+                return "Chennai"; // Default fallback value
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WARNING: Error decoding Base64 string. Using default value. Error: {ex.Message}");
+                return "Chennai"; // Default fallback value
+            }
         }
     }
 }
