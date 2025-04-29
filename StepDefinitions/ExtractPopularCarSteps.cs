@@ -35,7 +35,18 @@ namespace BikeProject.StepDefinitions
             string city = Base64Decode(encodedCity);  // This would decode to "Chennai"
             _scenarioContext = scenarioContext;
             driver = (IWebDriver)_scenarioContext["WebDriver"];
-            homePage = new HomePage(driver); // Initialize homePage in the constructor
+            // Check if HomePage exists in ScenarioContext, if not create it
+            if (!_scenarioContext.ContainsKey("HomePage") || _scenarioContext["HomePage"] == null)
+            {
+                homePage = new HomePage(driver);
+                _scenarioContext["HomePage"] = homePage;
+                Console.WriteLine("Created and stored new HomePage in ScenarioContext");
+            }
+            else
+            {
+                homePage = (HomePage)_scenarioContext["HomePage"];
+                Console.WriteLine("Retrieved existing HomePage from ScenarioContext");
+            }
 
             // Initialize ExtentHelper with custom report name
             if (!_scenarioContext.ContainsKey("ExtentHelper"))
